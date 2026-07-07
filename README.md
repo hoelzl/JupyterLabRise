@@ -21,7 +21,9 @@ is fast and deterministic and the reference env stays small.
 - `envs/old/` — pinned old reference stack (Notebook 6 + RISE 5.7).
 - `harness/` — Playwright/TypeScript engine (servers, capture, compare, report).
 - `config/decks.json` — deck registry; `config/baseline.json` — accepted per-slide scores.
-- `goldens/` — committed reference screenshots. `shots/`, `reports/` — regenerable (gitignored).
+- `goldens/` — old-RISE reference screenshots. **Not committed** (they are renders of
+  proprietary course slides); kept local and regenerable via `scripts/render-old.ps1`.
+  `shots/`, `reports/` — also gitignored/regenerable.
 - `tests/` — visual-regression acceptance suite.
 - `scripts/` — PowerShell entry points.
 - `PLAN.md` — the implementation plan. `HANDOVER.md` — living state / how to resume.
