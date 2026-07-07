@@ -1,0 +1,8 @@
+{
+  "scroll": true,
+  "theme": "simple",
+  "transition": "none",
+  "controls": false,
+  "progress": false,
+  "autolaunch": false
+}

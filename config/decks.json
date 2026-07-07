@@ -1,0 +1,16 @@
+{
+  "$comment": "Deck registry. Paths are absolute (Windows). 'glob' is relative to 'path'. Notebooks are rendered as-saved (no execution). Start depth-first on deck #1.",
+  "viewportDefault": { "width": 1920, "height": 1080 },
+  "decks": [
+    {
+      "id": "machine-learning-azav-de",
+      "path": "C:/Users/tc/Programming/Python/Courses/Own/PythonCourses/output/trainer/machine-learning-azav-de/Folien/Notebooks/Completed",
+      "glob": "**/*.ipynb",
+      "viewport": { "width": 1920, "height": 1080 },
+      "sample": [
+        "Woche 01 Einführung, LLMs und Python-Setup/01 Präsenz - Kursübersicht.ipynb"
+      ],
+      "notes": "First milestone deck. 'Completed' variant has saved outputs. 'Code-Along' sibling lacks outputs — handle later."
+    }
+  ]
+}

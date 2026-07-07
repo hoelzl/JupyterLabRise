@@ -1,0 +1,23 @@
+{
+  "name": "riselook-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Render/compare engine for porting the classic RISE look to the JupyterLab fork.",
+  "scripts": {
+    "capture": "tsx src/cli.ts capture",
+    "compare": "tsx src/cli.ts compare",
+    "report": "tsx src/cli.ts report"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0",
+    "pixelmatch": "^6.0.0",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0",
+    "@types/pngjs": "^6.0.5"
+  }
+}

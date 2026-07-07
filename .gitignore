@@ -1,0 +1,23 @@
+# Python environments
+envs/.venv-old/
+envs/.venv-new/
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+harness/node_modules/
+node_modules/
+tests/node_modules/
+
+# Generated render artifacts (regenerable; goldens/ is committed, these are not)
+shots/
+reports/
+test-results/
+playwright-report/
+harness/.cache/
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db

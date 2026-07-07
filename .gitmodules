@@ -1,0 +1,3 @@
+[submodule "rise"]
+	path = rise
+	url = https://github.com/hoelzl/rise

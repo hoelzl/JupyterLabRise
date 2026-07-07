@@ -1,0 +1,7 @@
+# Normalize text to LF; mark binaries so git doesn't touch them.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ipynb binary
