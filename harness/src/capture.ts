@@ -37,12 +37,47 @@ async function enterSlideshow(
     const url = `${baseUrl}/rise/${enc}?token=${TOKEN}`;
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
   }
+  // Both stacks converge on a reveal.js deck. Wait for it to finish initializing
+  // (reveal adds `.ready` to `.reveal`), then hide chrome. We drive it via
+  // keyboard + DOM state (the new fork does not expose a global `Reveal`).
   await page.waitForSelector('.reveal .slides section', { timeout: 60000 });
-  await page.waitForFunction(() => typeof (window as any).Reveal !== 'undefined', undefined, {
-    timeout: 60000
-  });
+  await page
+    .waitForSelector('.reveal.ready', { timeout: 30000 })
+    .catch(() => {/* some builds omit .ready; DOM classes still work */});
   await page.addStyleTag({ content: HIDE_CHROME });
   await page.waitForTimeout(1500);
+}
+
+// Read current slide indices + remaining hidden fragments straight from the reveal DOM.
+// Works on both old RISE and the new fork.
+interface RevealState {
+  h: number;
+  v: number;
+  hiddenFragments: number;
+}
+async function readState(page: Page): Promise<RevealState> {
+  return page.evaluate(() => {
+    const root = document.querySelector('.reveal .slides');
+    if (!root) return { h: 0, v: 0, hiddenFragments: 0 };
+    const hs = Array.from(root.children).filter((e) => e.tagName === 'SECTION') as HTMLElement[];
+    let h = hs.findIndex((s) => s.classList.contains('present'));
+    if (h < 0) h = 0;
+    const cur = hs[h];
+    let v = 0;
+    let slideEl: HTMLElement = cur;
+    if (cur) {
+      const vs = Array.from(cur.children).filter((e) => e.tagName === 'SECTION') as HTMLElement[];
+      if (vs.length) {
+        v = vs.findIndex((s) => s.classList.contains('present'));
+        if (v < 0) v = 0;
+        slideEl = vs[v];
+      }
+    }
+    const hiddenFragments = slideEl
+      ? slideEl.querySelectorAll('.fragment:not(.visible)').length
+      : 0;
+    return { h, v, hiddenFragments };
+  });
 }
 
 export interface SlideShot {
@@ -59,42 +94,41 @@ export interface CaptureResult {
   slides: SlideShot[];
 }
 
-/** Walk the reveal slide grid, fully revealing fragments, one screenshot per (h,v). */
+/** Walk the reveal slide grid via keyboard, fully revealing fragments, one shot per (h,v). */
 async function walk(page: Page, outDir: string): Promise<SlideShot[]> {
   const slides: SlideShot[] = [];
   const seen = new Set<string>();
   const MAX = 400;
 
-  await page.evaluate(() => (window as any).Reveal.slide(0, 0));
+  // Reveal starts on the first slide (0,0) after load — no navigation needed.
   await page.waitForTimeout(300);
 
   for (let i = 0; i < MAX; i++) {
-    // Reveal every fragment on the current slide so we screenshot its final state.
-    await page.evaluate(() => {
-      const R = (window as any).Reveal;
-      let guard = 0;
-      while (R.availableFragments && R.availableFragments().next && guard++ < 200) {
-        R.nextFragment();
-      }
-    });
-    await page.waitForTimeout(200);
-
-    const idx = (await page.evaluate(() => (window as any).Reveal.getIndices())) as {
-      h: number;
-      v: number;
-    };
-    const key = `${idx.h}-${idx.v}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      const file = resolve(outDir, `slide-${String(idx.h).padStart(3, '0')}-${String(idx.v).padStart(2, '0')}.png`);
-      await page.screenshot({ path: file });
-      slides.push({ key, h: idx.h, v: idx.v, file });
+    // Reveal every fragment on the current slide (Space advances one fragment at a time).
+    let guard = 0;
+    while ((await readState(page)).hiddenFragments > 0 && guard++ < 200) {
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(120);
     }
 
-    const isLast = await page.evaluate(() => (window as any).Reveal.isLastSlide());
-    if (isLast) break;
-    await page.evaluate(() => (window as any).Reveal.next());
-    await page.waitForTimeout(250);
+    const before = await readState(page);
+    const key = `${before.h}-${before.v}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      const file = resolve(
+        outDir,
+        `slide-${String(before.h).padStart(3, '0')}-${String(before.v).padStart(2, '0')}.png`
+      );
+      await page.screenshot({ path: file });
+      slides.push({ key, h: before.h, v: before.v, file });
+    }
+
+    // Advance to the next slide (fragments are all shown, so Space moves on).
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(220);
+    const after = await readState(page);
+    // No movement and nothing new to reveal => we're at the end.
+    if (after.h === before.h && after.v === before.v && after.hiddenFragments === 0) break;
   }
   return slides;
 }
