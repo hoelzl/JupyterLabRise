@@ -12,36 +12,41 @@ CSS/TS until the new look is *close* (not pixel-perfect) to the old one. Lock in
 progress with visual-regression acceptance tests. Iterate slide-by-slide then
 deck-by-deck. Full plan: `PLAN.md`.
 
-## Current status
+## Current status (as of 2026-07-08)
 
-- **Phases 0–5 DONE.** The fork looks *close* to classic RISE across the tested
-  content types, and a regression suite locks it in. Remaining: broaden coverage
-  (Phase 4 is never truly "done") and fan out to more decks (Phase 6).
-- **Acceptance suite (Phase 5):** `scripts/test.ps1` (→ `harness/src/acceptance.ts`)
-  re-renders every baselined notebook under the new fork and asserts each slide
-  stays ≤ its `config/baseline.json` threshold (+0.01 epsilon). Currently **81/81
-  pass**; verified it fails + exits 1 on a real regression. Notebooks without local
-  goldens are SKIPPED (goldens are proprietary/local-only).
-- **Env — old (Notebook6+RISE):** BUILT at `envs/.venv-old`. `scripts/setup-old-env.ps1`.
-- **Env — new (JupyterLab+fork):** BUILT at `envs/.venv-new`, fork dev-installed + labextension symlinked + server ext enabled. `scripts/setup-fork.ps1`.
-- **Goldens captured:** deck `machine-learning-azav-de`, sample notebook (19 slides). New-stack shots also captured (19 — counts match).
-- **Report:** `reports/machine-learning-azav-de/index.html` (mean mismatch 2.17%, down from 2.53% — but see metric caveat; the visual match is much better than that number implies).
-- **Baseline scores:** RECORDED for the sample notebook in `config/baseline.json`
-  (per-slide accepted thresholds = current mismatch ×1.5 + 0.5pp). Regenerate with
-  `npx tsx src/cli.ts compare --deck <id> --writeBaseline true`.
-- **Fork branch:** `port/classic-look` @ 08d3a2e (branched from `main` @ 837bddc),
-  pushed to github.com/hoelzl/rise. Commits: e27216e (markdown/heading/image/
-  blue-bar), 55ebc9b (code-cell sizing), b8f78fa (code size 22.4px fix), 6cb1199
-  (table font-size:inherit — pushed by the user from another session), 2f3c9bb
-  (block spacing + table centering; rebased onto 6cb1199), 61cb661 (blockquote
-  box, keep <details> triangle), 08d3a2e (scope markdown-table sizing to
-  .jp-RenderedMarkdown so pandas DataFrame OUTPUT tables aren't oversized).
-  NOTE: always `git fetch` the submodule before pushing (remote diverged once).
-- **Coverage so far (3 notebooks, baselines recorded):** sample markdown (19
-  slides), code-heavy `Z02 .../06 Matrix-Multiplikation` (51), math/long-code
-  `Woche 09 .../01 Hybride Suche` (11). Markdown, headings, images, bullet/bold
-  lists, tables, code cells all look close. Code cells lack saved outputs
-  deck-wide (code-along style), so rendered OUTPUT styling is still UNTESTED.
+- **Phases 0–6 DONE.** The fork looks *close* to classic RISE across every content
+  type we've tested, and a regression suite locks it in. The core porting work is
+  essentially complete and **pushed** to `github.com/hoelzl/rise`. What remains is
+  optional polish + one real fork bug to investigate (see **Next Steps &
+  Recommendations**).
+- **Acceptance suite:** `scripts/test.ps1` (→ `harness/src/acceptance.ts`) re-renders
+  every baselined notebook under the new fork and asserts each slide stays ≤ its
+  `config/baseline.json` threshold (+0.01 eps). Currently **159/159 pass** (deck-1
+  `machine-learning-azav-de` = 81 slides, `evaluation` deck = 78). Exits 1 on
+  regression; notebooks without local goldens are SKIPPED (goldens are
+  proprietary/local-only).
+- **Envs:** old (Notebook6+RISE) at `envs/.venv-old` (`scripts/setup-old-env.ps1`);
+  new (JupyterLab+fork) at `envs/.venv-new`, fork dev-installed + labextension
+  symlinked + server ext enabled (`scripts/setup-fork.ps1`). Both BUILT.
+- **Fork branch:** `port/classic-look` @ **08d3a2e** (branched from `main` @
+  837bddc), **pushed** to github.com/hoelzl/rise. Parent repo `main` @ 1bea0ed
+  (pushed to git@github.com:hoelzl/JupyterLabRise.git), submodule pointer =
+  08d3a2e. Fork commit history: e27216e (heading/image/blue-bar) → 55ebc9b →
+  b8f78fa (code sizing) → 6cb1199 (table inherit — *pushed by the user from another
+  session; the branch diverged, so ALWAYS `git fetch` the submodule before
+  pushing*) → 2f3c9bb (block spacing + table centering) → dd93d51* → 61cb661
+  (blockquote box) → 08d3a2e (scope table sizing to markdown). It has NOT been
+  merged to the fork's `main` / no PR opened yet — that's the user's call.
+- **Content coverage (all VERIFIED close to classic):** markdown, headings, images,
+  bullet/bold/nested lists, markdown tables, code cells (source + syntax), math /
+  inline LaTeX (`$…$`, vectors), multi-column HTML/float layouts, blockquotes,
+  `voiceover` narration cells, `<details>/<summary>`, **and rendered code OUTPUTS**
+  (matplotlib/seaborn PNG plots + pandas DataFrame HTML tables). Two courses tested
+  (`machine-learning-azav-de` + `python-best-practice-de`) → the look generalizes.
+- **Decks registered** (`config/decks.json`): `machine-learning-azav-de` (deck #1,
+  4 sample nbs), `evaluation` (4 nbs incl. the 2 executed-output ones),
+  `python-best-practice-de` (2 nbs). All course notebooks are **code-along (no saved
+  outputs)** — the 2 output notebooks were executed by us into `output/evaluation/`.
 
 ## Phase 4 — what was fixed (root cause found)
 
@@ -90,20 +95,21 @@ dumps computed font-size/color/width/ancestor-chain for the h1/h2 + image on the
 content slide — how the 14px-reset root cause was found. Avoid nested named
 functions inside `page.evaluate` (tsx/esbuild injects `__name` → ReferenceError).
 
-## Diagnosed divergences (new fork vs old RISE) — Phase 4 targets
+## Diagnosed divergences (new fork vs old RISE) — original Phase 4 targets
 
-From the sample deck's report, the new fork differs from old RISE in these ways
-(all fixable in `rise/packages/application/style/base.css`, maybe some TS):
-1. **Headings far too small.** Old RISE h1/h2 are large; new fork renders them small.
-2. **Heading weight/color wrong.** e.g. `# Willkommen!` is bold black in old, light grey + not bold in new.
-3. **Images overflow instead of scaling to fit the slide.** Old RISE fits images to
-   the slide; new fork renders them at natural size and they run off-screen. (Interacts
-   with `scroll:true`.)
-4. **Content not vertically centered / not scaled** the way old RISE does.
-5. **Stray blue vertical bar on the left edge** in the new fork (identify: reveal
-   progress? selected-cell indicator leaking through? a border on `.reveal .slides`).
-6. Console shows repeated **`RangeError: Maximum call stack size exceeded`** on the
-   new `/rise/` page — a real fork bug worth investigating (may or may not affect layout).
+Historical list of the divergences found on the first deck. **#1–#5 are all
+RESOLVED** in `base.css` (see fork commits + the fix write-ups above). **#6 is the
+one still open** and is the top recommended next-session item.
+1. ~~Headings far too small.~~ FIXED (heading typography restored).
+2. ~~Heading weight/color wrong.~~ FIXED (bold black, classic %-sizes).
+3. ~~Images overflow instead of scaling to fit.~~ FIXED (max-width/height:100%).
+4. ~~Content not vertically centered/scaled.~~ FIXED enough ("close"); minor
+   residual centering on very tall slides.
+5. ~~Stray blue vertical bar on the left edge.~~ FIXED (hid `.jp-Collapser`).
+6. **OPEN — `RangeError: Maximum call stack size exceeded`** repeated in the console
+   on the new `/rise/` page. Never root-caused. A real fork bug (not cosmetic);
+   the leading suspect behind the (now-worked-around) tall-slide capture flake, and
+   could surface during live presentations. **See Next Steps recommendation.**
 
 ## Capture flake on tall slides (FIXED 2026-07-08)
 
@@ -140,8 +146,19 @@ SSIM refinement later if ranking proves insufficient.
 - Reference "look" = **stock RISE, `simple` theme, `scroll:true`** (from `~/.jupyter/nbconfig/rise.json`). The aqua `rise.css` files under `Own/Old/...` are stale — ignore.
 - Notebooks are rendered **as saved**: no execution, no kernel needed for display.
 - Old & new RISE both read the same `slideshow` metadata → identical reveal.js slide graph → Nth (h,v) slide corresponds 1:1. Use `Reveal.getState()`/indices, not blind key-stepping. Assert equal slide counts before comparing.
-- Deck #1: `.../machine-learning-azav-de/Folien/Notebooks/Completed` (has saved outputs). `Code-Along` sibling lacks outputs — defer.
-- Fork is a lerna monorepo: **`packages/application`** = reveal.js/RISE app; **`packages/application/style/base.css`** (459 lines) is the core look. **`packages/lab`** = JupyterLab plugin. `ui-tests/` uses Galata/Playwright.
+- Deck #1: `.../machine-learning-azav-de/Folien/Notebooks/Completed`. NOTE: despite
+  the `Completed` name these notebooks are **code-along — they have NO saved
+  outputs** (you execute cells live while teaching). To test rendered outputs we
+  EXECUTED notebooks ourselves (see the execute command in Next Steps). Executed
+  output notebooks live in `output/evaluation/` (the `evaluation` deck).
+- Fork is a lerna monorepo: **`packages/application`** = reveal.js/RISE app;
+  **`packages/application/style/base.css`** is the core look (ALL our CSS fixes live
+  here). **`packages/lab`** = JupyterLab plugin. `ui-tests/` uses Galata/Playwright.
+- **Markdown vs output scoping (IMPORTANT pattern):** rules meant for slide markdown
+  must be scoped to `.jp-RenderedMarkdown`, NOT the broader `.jp-RenderedHTMLCommon`
+  — because code-cell OUTPUTS (DataFrames, rich HTML) also use
+  `.jp-RenderedHTMLCommon`. The table rule already does this; the font-size/heading/
+  spacing rules do NOT yet (that's residual #4 in Next Steps).
 - Tooling: Python 3.11, Node v25/npm 11, `uv` 0.11, `gh`, git. No Jupyter on default PATH → project-local venvs.
 - **yarn.lock gotcha:** the venv's `jlpm` (Yarn) is older than the fork's committed
   lockfile format, so building rewrites `rise/yarn.lock` (v8→v6). Do NOT commit that
@@ -150,41 +167,97 @@ SSIM refinement later if ranking proves insufficient.
   `jlpm install` in `rise/` once to reconcile node_modules↔lockfile, then rebuild.
 - Windows/PowerShell host. Bash tool available for POSIX. Deck paths contain spaces + German chars — quote carefully.
 
-## Next step (do this next)
+## Next Steps & Recommendations
 
-Core look + tests are in place. To broaden and fan out:
-1. **Widen coverage on deck #1:** `scripts/render-old.ps1 -Deck machine-learning-azav-de -All true`
-   (goldens for the whole `Completed` deck — proprietary, stays local), then
-   `-All true` on render-new + compare. Open the report, eyeball the worst slides
-   for divergences the 3 tested notebooks didn't exercise (multi-column HTML,
-   deep fragment stacks, wide tables, SVG/plot outputs if any). Fix in base.css;
-   `scripts/rebuild-fork.ps1`; re-render; re-compare. Then
-   `npx tsx src/cli.ts compare --deck <id> --all true --writeBaseline true` and
-   `scripts/test.ps1` to lock in.
-   NOTE: rendered code-cell OUTPUTS are still untested — this deck is code-along
-   (no saved outputs). Find/execute a deck with outputs, or add one, to cover them.
-2. **Phase 6 — fan out:** add decks to `config/decks.json`, regrow goldens + tests.
-3. **Optional:** push `port/classic-look` to github.com/hoelzl/rise + parent to the
-   public repo (user chose to hold this for now — ask before publishing).
+**Bottom line: the porting work is done and shipped.** The fork looks close to
+classic RISE across every content type in the course decks, tests are green
+(159/159), and everything is pushed. Nothing below is *required*. Here is each
+candidate next step with an explicit recommendation, roughly highest-value first.
 
-To SEE current state fast: open `reports/machine-learning-azav-de/index.html`, or Read
-`goldens/.../slide-XXX.png` beside `shots/.../slide-XXX.png`.
+1. **Dogfood it — present a real deck from the fork. → DO THIS FIRST.**
+   The single most valuable thing left. Everything so far is validated against
+   *static snapshots*; your real presentations run **live** (you execute cells as
+   you teach). Open a real course notebook in the new stack (`envs/.venv-new`,
+   `jupyter lab`, enter RISE) and actually click through a lesson, running cells.
+   That's the only way to catch live-execution/interaction issues the snapshot
+   harness can't. Low effort, high signal. If it feels right, that's your cue to
+   open the PR (#6 below).
 
-NOTE: after editing base.css you MUST `scripts/rebuild-fork.ps1` before re-rendering,
-or the dev-installed labextension serves stale CSS. If rebuild errors on
-`fsevents ... not present in your lockfile`, run `jlpm install` in `rise/` once.
+2. **Investigate the `RangeError: Maximum call stack size exceeded`. → DO, if #1
+   surfaces anything OR you want the fork solid.** This is the only known *real
+   bug* (divergence #6), never root-caused. It's the leading suspect behind the
+   tall-slide capture flake (which we worked around, not fixed) and could bite
+   during live presentations on big decks. Approach: open a large deck in the fork,
+   reproduce in the browser console, read the stack trace, find the recursion
+   (suspect: slide-graph building in `packages/application` or a reveal plugin/init
+   loop). Medium effort, medium-high value. **Recommended.**
+
+3. **Execute a few more varied-output notebooks. → DO a small pass, MEDIUM value.**
+   We covered matplotlib PNG plots + pandas DataFrame tables. Untested output
+   shapes that could surprise: **error tracebacks** (colored ANSI), **subplots /
+   multiple figures**, **styled DataFrames** (`.style`), **SVG/vector plots**,
+   rich reprs. Pick 2–3 notebooks, execute with the root `.venv` (command below),
+   drop into `output/evaluation/`, add to the `evaluation` deck sample, render +
+   compare. Only worth it if you actually present executed outputs like these.
+
+4. **Fix the two output-area residuals (DataFrame footer size + `[N]:` vs
+   `In [N]:`/`Out[N]:` prompts). → DEFER / only if it bothers you. LOW value.**
+   Both come from broad `.jp-RenderedHTMLCommon` markdown rules leaking into output
+   areas. The clean fix is to scope the container `font-size`/heading/spacing rules
+   to `.jp-RenderedMarkdown` (as already done for tables). But it touches rules that
+   affect all 159 baselined slides → non-trivial regression risk for a cosmetic
+   win. If you do it: one careful pass, re-render everything, re-baseline. **My
+   recommendation: skip unless you notice it live.**
+
+5. **Broaden static coverage (`-All true` on a full deck; deep fragment stacks,
+   very wide tables, SVG). → DEFER, LOW urgency.** Diminishing returns — math,
+   multi-col, blockquote, tables, lists, code all verified across two courses.
+   Spot-check only if a specific deck looks off.
+
+6. **Open a PR / merge `port/classic-look` → fork `main`. → YOUR CALL.** The branch
+   is pushed and clean. Recommend doing #1 (dogfood) first, then open the PR once
+   you're confident presenting from it.
+
+7. **Metric refinement (content-bbox or SSIM instead of white-dominated pixelmatch).
+   → SKIP unless ranking fails.** The current metric ranks worst-slides fine for the
+   human-review workflow; it's only misleading as an *absolute* score (see caveat).
+
+**Suggested fresh-session plan:** do #1 (dogfood) → if issues or ambition, #2
+(RangeError). Treat #3 as opportunistic, #4–#7 as defer/skip.
+
+To SEE current state fast: open `reports/<deck>/index.html`, or Read
+`goldens/<deck>/<nb>/slide-XXX.png` beside `shots/<deck>/<nb>/slide-XXX.png`.
+
+**Executing a notebook to get outputs** (root env has all course deps):
+```bash
+MPLBACKEND="module://matplotlib_inline.backend_inline" \
+  "C:/Users/tc/Programming/Python/Courses/Own/PythonCourses/.venv/Scripts/python.exe" \
+  -m nbconvert --to notebook --execute --inplace \
+  --ExecutePreprocessor.timeout=180 --ExecutePreprocessor.kernel_name=python3 "<notebook>"
+```
+The inline backend is REQUIRED for PNG capture — `MPLBACKEND=Agg` gives `<Figure>`
+text instead of images.
+
+REMINDER: after editing base.css you MUST `scripts/rebuild-fork.ps1` before
+re-rendering, or the dev-installed labextension serves stale CSS. If rebuild errors
+on `fsevents ... not present in your lockfile`, run `jlpm install` in `rise/` once,
+then rebuild (see yarn.lock gotcha).
 
 ## Commands cheat-sheet
 
 ```powershell
-scripts/setup-old-env.ps1                                  # build old env (done)
-scripts/setup-fork.ps1                                     # build new env + fork (done)
-scripts/render-old.ps1 -Deck machine-learning-azav-de      # goldens (sample nb; add -All for full deck)
-scripts/render-new.ps1 -Deck machine-learning-azav-de      # new shots
-scripts/compare.ps1   -Deck machine-learning-azav-de       # diff + report
-scripts/loop.ps1      -Deck machine-learning-azav-de       # all of the above
-scripts/rebuild-fork.ps1                                   # after editing fork CSS/TS
+scripts/setup-old-env.ps1                       # build old env (done)
+scripts/setup-fork.ps1                          # build new env + fork (done)
+scripts/render-old.ps1 -Deck <id>               # goldens (sample nbs; -All full deck; -Nb "rel.ipynb" one)
+scripts/render-new.ps1 -Deck <id>               # new shots (same flags)
+scripts/compare.ps1    -Deck <id>               # diff + reports/<id>/index.html
+scripts/loop.ps1       -Deck <id>               # old + new + compare
+scripts/rebuild-fork.ps1                        # MUST run after editing fork CSS/TS
+scripts/test.ps1                                # acceptance suite (all baselined decks); -Deck <id> to scope
+# write/refresh baselines after an accepted change:
+#   cd harness; npx tsx src/cli.ts compare --deck <id> --writeBaseline true
 ```
+Deck ids: `machine-learning-azav-de`, `evaluation`, `python-best-practice-de`.
 Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
 
 ## Edit log
@@ -238,6 +311,20 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
 
 ## How to resume in a fresh session
 
-1. Read this file + `PLAN.md`.
-2. `git submodule update --init --recursive`.
-3. Check "Current status" above for the phase; run the "Next step".
+1. Read this file (esp. **Current status** + **Next Steps & Recommendations**) and `PLAN.md`.
+2. `git submodule update --init --recursive` (fork should land on `port/classic-look` @ 08d3a2e).
+3. Sanity-check green: `scripts/test.ps1` → expect **159/159**.
+4. Pick from **Next Steps & Recommendations** (recommended: #1 dogfood, then #2 RangeError).
+   Everything is shipped — no in-flight/half-done work to pick up.
+
+### Key files touched by this feature (harness side)
+- `rise/packages/application/style/base.css` — ALL the look fixes (fork submodule).
+- `harness/src/capture.ts` — Playwright slide walker + screenshot (transition:none,
+  1000ms settle, scrollTop=0 before each shot).
+- `harness/src/compare.ts`, `report.ts` — pixelmatch diff + worst-first HTML report.
+- `harness/src/acceptance.ts` — the regression suite (→ `scripts/test.ps1`).
+- `harness/src/cli.ts` — `capture`/`compare`/`loop` + `--writeBaseline`.
+- `harness/src/probe-measure.ts`, `probe-spacing.ts` — computed-style / vertical-rhythm
+  diagnostics (how root causes were found; not wired into CLI).
+- `config/decks.json` — deck registry; `config/baseline.json` — per-slide thresholds.
+- `goldens/` (old-RISE reference, gitignored/proprietary), `shots/`, `reports/` (regenerated).
