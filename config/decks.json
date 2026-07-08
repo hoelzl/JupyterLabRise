@@ -11,6 +11,17 @@
         "Woche 01 Einführung, LLMs und Python-Setup/01 Präsenz - Kursübersicht.ipynb"
       ],
       "notes": "First milestone deck. 'Completed' variant has saved outputs. 'Code-Along' sibling lacks outputs — handle later."
+    },
+    {
+      "id": "evaluation",
+      "path": "C:/Users/tc/Programming/Python/Courses/Own/PythonCourses/output/evaluation",
+      "glob": "**/*.ipynb",
+      "viewport": { "width": 1920, "height": 1080 },
+      "sample": [
+        "06 Copilot Kontext geben.ipynb",
+        "09 Vererbung.ipynb"
+      ],
+      "notes": "Evaluation deck: exercises content types the first deck lacked — markdown tables, 'voiceover' (non-standard slide_type) narration cells with yellow-box HTML, and heading-then-list slides (heading→list spacing under scrutiny)."
     }
   ]
 }

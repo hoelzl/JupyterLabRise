@@ -29,10 +29,11 @@ deck-by-deck. Full plan: `PLAN.md`.
 - **Baseline scores:** RECORDED for the sample notebook in `config/baseline.json`
   (per-slide accepted thresholds = current mismatch ×1.5 + 0.5pp). Regenerate with
   `npx tsx src/cli.ts compare --deck <id> --writeBaseline true`.
-- **Fork branch:** `port/classic-look` @ b8f78fa (branched from `main` @ 837bddc).
-  base.css edits committed there; NOT yet pushed to github.com/hoelzl/rise (user
-  chose to keep everything local for now). Commits: e27216e (markdown/heading/
-  image/blue-bar), 55ebc9b (code-cell sizing), b8f78fa (code size 22.4px fix).
+- **Fork branch:** `port/classic-look` @ dd93d51 (branched from `main` @ 837bddc).
+  Commits: e27216e (markdown/heading/image/blue-bar), 55ebc9b (code-cell sizing),
+  b8f78fa (code size 22.4px fix), dd93d51 (block spacing + table font-size).
+  b8f78fa was pushed to github.com/hoelzl/rise earlier; dd93d51 is LOCAL (not yet
+  pushed — ask before publishing).
 - **Coverage so far (3 notebooks, baselines recorded):** sample markdown (19
   slides), code-heavy `Z02 .../06 Matrix-Multiplikation` (51), math/long-code
   `Woche 09 .../01 Hybride Suche` (11). Markdown, headings, images, bullet/bold
@@ -57,8 +58,23 @@ capture screenshotted slides mid-animation (looked grey/offset/overflowing — a
 red herring that masked the CSS fixes). `capture.ts` now injects `transition:none`
 + waits 600ms after advancing. Old stack was already `transition:none`.
 
-**Residual minor diffs (acceptable "close"):** heading→list gap slightly tighter
-than classic; content sits a touch higher. Diminishing returns — left as-is.
+**Block spacing (FIXED 2026-07-08, evaluation deck):** the heading→list /
+list→list / heading→paragraph gaps were collapsing to ~0. Root cause: classic
+Notebook spaces sibling blocks with a 1em *top* margin on the *following* element
+(`.rendered_html * + ul/ol/p/table { margin-top: 1em }`) and gives blocks no
+bottom margin; the fork instead inherited a tangle of JupyterLab `margin-bottom`
++ reveal-theme list margins that left headings (bottom-margin 0) flush against the
+next block and gave sibling lists a zero gap. Fixed in base.css by zeroing the
+p/ul/ol/table bottom margins and driving all spacing from classic's top-margin
+rules (`* + p/ul/ol/table` and `h1..h6 + *`, nested lists → 0). Measured with the
+new `probe-spacing.ts`. Fork commit `dd93d51`.
+
+**Tables (FIXED same pass):** JupyterLab pins `table { font-size: 14px }` so tables
+rendered tiny; classic tables inherit the 35.84px body font. base.css now sets
+`.jp-RenderedHTMLCommon table { font-size: inherit; margin: auto }`.
+
+**Residual minor diffs (acceptable "close"):** content vertical centering can sit a
+touch high/low vs classic on very tall slides. Diminishing returns — left as-is.
 
 **Diagnostic tool:** `harness/src/probe-measure.ts` (`npx tsx src/probe-measure.ts old|new`)
 dumps computed font-size/color/width/ancestor-chain for the h1/h2 + image on the
@@ -79,6 +95,21 @@ From the sample deck's report, the new fork differs from old RISE in these ways
    progress? selected-cell indicator leaking through? a border on `.reveal .slides`).
 6. Console shows repeated **`RangeError: Maximum call stack size exceeded`** on the
    new `/rise/` page — a real fork bug worth investigating (may or may not affect layout).
+
+## Known flake (voiceover deck)
+
+The evaluation deck's `06 Copilot Kontext geben.ipynb` (12 `voiceover` narration
+cells) rendered wholesale-wrong once in ~6 acceptance runs (every slide from 1-2
+on came out ~90% mismatch at once — a blank/bad capture, not a spacing diff),
+then passed on re-run. Likely the fork's `RangeError: Maximum call stack size
+exceeded` (see divergence #6) occasionally aborting a render, or a settle-timing
+miss on the tall voiceover slides. Full suite is otherwise green (131/131). If it
+recurs, bump the capture settle in `capture.ts` for this deck or retry-on-blank.
+
+Note: `voiceover` is a non-standard slide_type; both stacks treat it as a
+continuation of the current subslide, so voiceover cells render as inline yellow
+HTML boxes appended to the preceding slide — matching between stacks, no CSS
+needed.
 
 ## Metric caveat (IMPORTANT)
 
@@ -170,6 +201,12 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
 - Phase 5: acceptance suite `harness/src/acceptance.ts` + `scripts/test.ps1`. Re-renders
   each baselined notebook, asserts slide mismatch ≤ baseline+eps, exits 1 on
   regression, SKIPs notebooks lacking local goldens. 81/81 pass; fail path verified.
+- Phase 6 (start): added `evaluation` deck (2 notebooks: voiceover narration + a
+  markdown table + heading-then-list slides) to `config/decks.json`. Surfaced two
+  divergences the first deck didn't exercise — tiny tables (jp 14px reset) and
+  collapsed block spacing (heading→list / list→list gaps = 0). Both fixed in
+  base.css (fork `dd93d51`); added `probe-spacing.ts` (per-block vertical-rhythm
+  measurement). Baselines recorded for 50 evaluation slides; full suite 131/131.
 
 ## How to resume in a fresh session
 
