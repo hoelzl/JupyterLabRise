@@ -34,15 +34,17 @@ deck-by-deck. Full plan: `PLAN.md`.
 - **Envs:** old (Notebook6+RISE) at `envs/.venv-old` (`scripts/setup-old-env.ps1`);
   new (JupyterLab+fork) at `envs/.venv-new`, fork dev-installed + labextension
   symlinked + server ext enabled (`scripts/setup-fork.ps1`). Both BUILT.
-- **Fork branch:** `port/classic-look` @ **08d3a2e** (branched from `main` @
-  837bddc), **pushed** to github.com/hoelzl/rise. Parent repo `main` @ 1bea0ed
+- **Fork branch:** `port/classic-look` @ **4578bdb** (branched from `main` @
+  837bddc), **pushed** to github.com/hoelzl/rise. Parent repo `main` @ ba32a00
   (pushed to git@github.com:hoelzl/JupyterLabRise.git), submodule pointer =
-  08d3a2e. Fork commit history: e27216e (heading/image/blue-bar) → 55ebc9b →
+  4578bdb. Fork commit history: e27216e (heading/image/blue-bar) → 55ebc9b →
   b8f78fa (code sizing) → 6cb1199 (table inherit — *pushed by the user from another
   session; the branch diverged, so ALWAYS `git fetch` the submodule before
   pushing*) → 2f3c9bb (block spacing + table centering) → dd93d51* → 61cb661
-  (blockquote box) → 08d3a2e (scope table sizing to markdown). It has NOT been
-  merged to the fork's `main` / no PR opened yet — that's the user's call.
+  (blockquote box) → 08d3a2e (scope table sizing to markdown) → 4578bdb (three
+  live-presentation fixes from dogfooding — see "Live dogfood fixes").
+  **PR OPEN:** github.com/hoelzl/rise/pull/1 (`port/classic-look` → `main`), not
+  yet merged — merge is the user's call.
 - **Content coverage (all VERIFIED close to classic):** markdown, headings, images,
   bullet/bold/nested lists, markdown tables, code cells (source + syntax), math /
   inline LaTeX (`$…$`, vectors), multi-column HTML/float layouts, blockquotes,
@@ -347,9 +349,10 @@ candidate next step with an explicit recommendation, roughly highest-value first
    multi-col, blockquote, tables, lists, code all verified across two courses.
    Spot-check only if a specific deck looks off.
 
-6. **Open a PR / merge `port/classic-look` → fork `main`. → YOUR CALL.** The branch
-   is pushed and clean. Recommend doing #1 (dogfood) first, then open the PR once
-   you're confident presenting from it.
+6. **~~Open a PR~~ DONE — merge `port/classic-look` → fork `main`. → MERGE IS YOUR
+   CALL.** Dogfooded (#1) and the PR is open: github.com/hoelzl/rise/pull/1. The
+   branch is pushed and clean; acceptance 159/159 and verified live at 4K. Nothing
+   left but to review + merge when you're ready.
 
 7. **Metric refinement (content-bbox or SSIM instead of white-dominated pixelmatch).
    → SKIP unless ranking fails.** The current metric ranks worst-slides fine for the
