@@ -29,11 +29,13 @@ deck-by-deck. Full plan: `PLAN.md`.
 - **Baseline scores:** RECORDED for the sample notebook in `config/baseline.json`
   (per-slide accepted thresholds = current mismatch ×1.5 + 0.5pp). Regenerate with
   `npx tsx src/cli.ts compare --deck <id> --writeBaseline true`.
-- **Fork branch:** `port/classic-look` @ dd93d51 (branched from `main` @ 837bddc).
-  Commits: e27216e (markdown/heading/image/blue-bar), 55ebc9b (code-cell sizing),
-  b8f78fa (code size 22.4px fix), dd93d51 (block spacing + table font-size).
-  b8f78fa was pushed to github.com/hoelzl/rise earlier; dd93d51 is LOCAL (not yet
-  pushed — ask before publishing).
+- **Fork branch:** `port/classic-look` @ 2f3c9bb (branched from `main` @ 837bddc),
+  pushed to github.com/hoelzl/rise. Commits: e27216e (markdown/heading/image/
+  blue-bar), 55ebc9b (code-cell sizing), b8f78fa (code size 22.4px fix), 6cb1199
+  (table font-size:inherit — pushed by the user from another session), 2f3c9bb
+  (block spacing + table centering; rebased onto 6cb1199 and deduped its table
+  rule). NOTE: the remote branch had diverged (6cb1199) when resuming — always
+  `git fetch` the submodule before pushing.
 - **Coverage so far (3 notebooks, baselines recorded):** sample markdown (19
   slides), code-heavy `Z02 .../06 Matrix-Multiplikation` (51), math/long-code
   `Woche 09 .../01 Hybride Suche` (11). Markdown, headings, images, bullet/bold
@@ -96,15 +98,16 @@ From the sample deck's report, the new fork differs from old RISE in these ways
 6. Console shows repeated **`RangeError: Maximum call stack size exceeded`** on the
    new `/rise/` page — a real fork bug worth investigating (may or may not affect layout).
 
-## Known flake (voiceover deck)
+## Capture flake on tall slides (FIXED 2026-07-08)
 
 The evaluation deck's `06 Copilot Kontext geben.ipynb` (12 `voiceover` narration
-cells) rendered wholesale-wrong once in ~6 acceptance runs (every slide from 1-2
-on came out ~90% mismatch at once — a blank/bad capture, not a spacing diff),
-then passed on re-run. Likely the fork's `RangeError: Maximum call stack size
-exceeded` (see divergence #6) occasionally aborting a render, or a settle-timing
-miss on the tall voiceover slides. Full suite is otherwise green (131/131). If it
-recurs, bump the capture settle in `capture.ts` for this deck or retry-on-blank.
+cells → very tall slides) rendered wholesale-wrong ~50% of runs: a contiguous tail
+of slides came out ~90% mismatch at once. Cause: tall slides scroll into place,
+and a screenshot caught mid-scroll left a blank/offset frame whose scroll offset
+then persisted for the rest of the notebook. Fixed in `capture.ts`: bump the
+post-advance settle 600→1000ms AND force `scrollTop=0` on the reveal
+viewport/section immediately before every screenshot (short slides are unaffected —
+scrollTop is already 0). 5/5 clean acceptance runs after the fix (was ~50% fail).
 
 Note: `voiceover` is a non-standard slide_type; both stacks treat it as a
 continuation of the current subslide, so voiceover cells render as inline yellow

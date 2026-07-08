@@ -127,6 +127,17 @@ async function walk(page: Page, outDir: string): Promise<SlideShot[]> {
         outDir,
         `slide-${String(before.h).padStart(3, '0')}-${String(before.v).padStart(2, '0')}.png`
       );
+      // Reset any residual scroll so the screenshot always frames the top of the
+      // slide (matching the old stack). Tall slides — e.g. the voiceover deck's
+      // big yellow narration boxes — otherwise sometimes get captured mid-scroll,
+      // leaving a blank/offset frame that reads as a ~90% mismatch.
+      await page.evaluate(() => {
+        document
+          .querySelectorAll('.reveal .slides section, .reveal-viewport, .reveal')
+          .forEach((el) => ((el as HTMLElement).scrollTop = 0));
+        window.scrollTo(0, 0);
+      });
+      await page.waitForTimeout(120);
       await page.screenshot({ path: file });
       slides.push({ key, h: before.h, v: before.v, file });
     }
@@ -134,8 +145,11 @@ async function walk(page: Page, outDir: string): Promise<SlideShot[]> {
     // Advance to the next slide (fragments are all shown, so Space moves on).
     await page.keyboard.press('Space');
     // Settle: cover the fork's auto_select_timeout (450ms) which re-selects a
-    // cell and can shift scroll/layout after the slide change.
-    await page.waitForTimeout(600);
+    // cell and can shift scroll/layout after the slide change. Tall slides (e.g.
+    // the voiceover deck's big yellow narration boxes) scroll into place more
+    // slowly, and a screenshot caught mid-scroll leaves a blank/offset frame that
+    // then persists for the rest of the notebook — so we wait generously here.
+    await page.waitForTimeout(1000);
     const after = await readState(page);
     // No movement and nothing new to reveal => we're at the end.
     if (after.h === before.h && after.v === before.v && after.hiddenFragments === 0) break;
