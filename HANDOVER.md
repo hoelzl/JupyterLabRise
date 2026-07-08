@@ -29,13 +29,14 @@ deck-by-deck. Full plan: `PLAN.md`.
 - **Baseline scores:** RECORDED for the sample notebook in `config/baseline.json`
   (per-slide accepted thresholds = current mismatch ×1.5 + 0.5pp). Regenerate with
   `npx tsx src/cli.ts compare --deck <id> --writeBaseline true`.
-- **Fork branch:** `port/classic-look` @ 2f3c9bb (branched from `main` @ 837bddc),
+- **Fork branch:** `port/classic-look` @ 08d3a2e (branched from `main` @ 837bddc),
   pushed to github.com/hoelzl/rise. Commits: e27216e (markdown/heading/image/
   blue-bar), 55ebc9b (code-cell sizing), b8f78fa (code size 22.4px fix), 6cb1199
   (table font-size:inherit — pushed by the user from another session), 2f3c9bb
-  (block spacing + table centering; rebased onto 6cb1199 and deduped its table
-  rule). NOTE: the remote branch had diverged (6cb1199) when resuming — always
-  `git fetch` the submodule before pushing.
+  (block spacing + table centering; rebased onto 6cb1199), 61cb661 (blockquote
+  box, keep <details> triangle), 08d3a2e (scope markdown-table sizing to
+  .jp-RenderedMarkdown so pandas DataFrame OUTPUT tables aren't oversized).
+  NOTE: always `git fetch` the submodule before pushing (remote diverged once).
 - **Coverage so far (3 notebooks, baselines recorded):** sample markdown (19
   slides), code-heavy `Z02 .../06 Matrix-Multiplikation` (51), math/long-code
   `Woche 09 .../01 Hybride Suche` (11). Markdown, headings, images, bullet/bold
@@ -76,7 +77,13 @@ rendered tiny; classic tables inherit the 35.84px body font. base.css now sets
 `.jp-RenderedHTMLCommon table { font-size: inherit; margin: auto }`.
 
 **Residual minor diffs (acceptable "close"):** content vertical centering can sit a
-touch high/low vs classic on very tall slides. Diminishing returns — left as-is.
+touch high/low vs classic on very tall slides. Two output-area residuals (minor,
+left as-is): (1) a pandas DataFrame's `<p>200 rows × 5 columns</p>` footer inherits
+the 35.84px markdown container font so it's larger than classic's; (2) code prompts
+read `[N]:` (JupyterLab convention) vs classic's `In [N]:` / `Out[N]:`. Both stem
+from broad `.jp-RenderedHTMLCommon` markdown rules leaking into output areas — a
+full fix would scope the container font/heading/spacing rules to
+`.jp-RenderedMarkdown` (as done for tables), but risk/benefit doesn't justify it yet.
 
 **Diagnostic tool:** `harness/src/probe-measure.ts` (`npx tsx src/probe-measure.ts old|new`)
 dumps computed font-size/color/width/ancestor-chain for the h1/h2 + image on the
@@ -210,6 +217,24 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
   collapsed block spacing (heading→list / list→list gaps = 0). Both fixed in
   base.css (fork `dd93d51`); added `probe-spacing.ts` (per-block vertical-rhythm
   measurement). Baselines recorded for 50 evaluation slides; full suite 131/131.
+- Phase 6 (fan-out): expanded ML deck sample (math/LaTeX, multi-column HTML,
+  blockquote notebooks) + added a 2nd course deck `python-best-practice-de`. All
+  static content held up — math (inline `$…$`, vectors), nested lists, multi-col
+  images (high mismatch = metric artifact on shifted photos, not a bug) all match;
+  the look generalizes to a 2nd course (1.89% mean). Fixed one real divergence:
+  blockquote box (fork `61cb661` — restore reveal simple-theme box, keep <details>
+  triangle per user).
+- Phase 6 (outputs): EXECUTED 2 notebooks via the PythonCourses root `.venv`
+  (Python 3.13, matplotlib/seaborn/pandas + nbconvert) into `output/evaluation/`
+  (`13-01 Datenvisualisierung` = PNG plots, `12-01 Datenanalyse mit pandas` = HTML
+  DataFrames) — the FIRST decks with saved outputs. Matplotlib PNG plots + code
+  cells match classic. Found + fixed a shipped regression: the broad table
+  font-size rule oversized pandas DataFrame OUTPUT tables ~2.5x — scoped it to
+  `.jp-RenderedMarkdown` (fork `08d3a2e`). Baselines now 78 evaluation slides;
+  full suite 159/159. To re-execute: `MPLBACKEND="module://matplotlib_inline.backend_inline"
+  <root>/.venv/Scripts/python.exe -m nbconvert --to notebook --execute --inplace
+  --ExecutePreprocessor.kernel_name=python3 "<nb>"` (the inline backend is REQUIRED
+  for PNG capture; do NOT set MPLBACKEND=Agg).
 
 ## How to resume in a fresh session
 

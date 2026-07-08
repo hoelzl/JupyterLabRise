@@ -8,9 +8,12 @@
       "glob": "**/*.ipynb",
       "viewport": { "width": 1920, "height": 1080 },
       "sample": [
-        "Woche 01 Einführung, LLMs und Python-Setup/01 Präsenz - Kursübersicht.ipynb"
+        "Woche 01 Einführung, LLMs und Python-Setup/01 Präsenz - Kursübersicht.ipynb",
+        "Woche 08 RAG - Vektoren I (Embeddings _ Vektor-DBs)/01 Vector Embeddings für RAG.ipynb",
+        "Woche 01 Einführung, LLMs und Python-Setup/05 Präsenz - Prompt Engineering.ipynb",
+        "Woche 01 Einführung, LLMs und Python-Setup/04 Video - Was sind Large Language Models.ipynb"
       ],
-      "notes": "First milestone deck. 'Completed' variant has saved outputs. 'Code-Along' sibling lacks outputs — handle later."
+      "notes": "First milestone deck. Notebooks are code-along (no saved outputs). Fan-out samples exercise math/LaTeX (Woche 08 Vector Embeddings), blockquotes (Woche 01 Prompt Engineering), multi-column HTML (Woche 01 Video)."
     },
     {
       "id": "evaluation",
@@ -19,9 +22,22 @@
       "viewport": { "width": 1920, "height": 1080 },
       "sample": [
         "06 Copilot Kontext geben.ipynb",
-        "09 Vererbung.ipynb"
+        "09 Vererbung.ipynb",
+        "13-01 Datenvisualisierung.ipynb",
+        "12-01 Datenanalyse mit pandas.ipynb"
       ],
-      "notes": "Evaluation deck: exercises content types the first deck lacked — markdown tables, 'voiceover' (non-standard slide_type) narration cells with yellow-box HTML, and heading-then-list slides (heading→list spacing under scrutiny)."
+      "notes": "Evaluation deck: exercises content types the first deck lacked — markdown tables, 'voiceover' (non-standard slide_type) narration cells with yellow-box HTML, and heading-then-list slides (heading→list spacing under scrutiny). The 13-01/12-01 notebooks were EXECUTED (via the PythonCourses root .venv) to test rendered code OUTPUTS: 13-01 = matplotlib/seaborn PNG plots, 12-01 = pandas DataFrame HTML tables."
+    },
+    {
+      "id": "python-best-practice-de",
+      "path": "C:/Users/tc/Programming/Python/Courses/Own/PythonCourses/output/trainer/python-best-practice-de/Folien/Notebooks/Completed",
+      "glob": "**/*.ipynb",
+      "viewport": { "width": 1920, "height": 1080 },
+      "sample": [
+        "Woche 2/07 GRASP Creator.ipynb",
+        "Objektorientierung (Bonus-Material)/01 Umwandlung in Strings.ipynb"
+      ],
+      "notes": "Second course (fan-out): validates the ported look generalizes beyond the ML deck. Samples exercise multi-column HTML (GRASP Creator) and blockquotes (Umwandlung in Strings). Code-along, no saved outputs."
     }
   ]
 }
