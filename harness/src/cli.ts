@@ -2,7 +2,7 @@
 //   capture --stack old|new --deck ID [--limit N] [--nb "relpath.ipynb"]
 //   compare --deck ID
 //   loop    --deck ID [--limit N]
-import { readdirSync, statSync, existsSync } from 'node:fs';
+import { readdirSync, statSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, relative, join } from 'node:path';
 import { getDeck, PATHS } from './config.js';
 import { startServer, StackName } from './servers.js';
@@ -97,7 +97,30 @@ function cmdCompare(args: Record<string, string>): NotebookDiff[] {
   const mean = all.length ? all.reduce((a, s) => a + s.mismatch, 0) / all.length : 0;
   console.log(`[compare] ${diffs.length} notebook(s), ${all.length} slide(s), mean mismatch ${(mean * 100).toFixed(2)}%`);
   console.log(`[report] ${out}`);
+  if (args.writeBaseline === 'true') writeBaseline(deck.id, diffs);
   return diffs;
+}
+
+// Persist accepted per-slide thresholds to config/baseline.json. Each threshold
+// is the current mismatch plus headroom (×1.5 + 0.5pp) so the Phase 5 acceptance
+// suite tolerates minor rendering nondeterminism but still catches regressions.
+function writeBaseline(deckId: string, diffs: NotebookDiff[]): void {
+  const file = resolve(PATHS.config, 'baseline.json');
+  const doc = JSON.parse(readFileSync(file, 'utf8')) as {
+    decks: Record<string, Record<string, Record<string, number>>>;
+  };
+  const deckEntry: Record<string, Record<string, number>> = {};
+  for (const nb of diffs) {
+    const slideEntry: Record<string, number> = {};
+    for (const s of nb.slides) {
+      slideEntry[s.key] = Math.round((s.mismatch * 1.5 + 0.005) * 10000) / 10000;
+    }
+    deckEntry[nb.relKey] = slideEntry;
+  }
+  doc.decks[deckId] = deckEntry;
+  writeFileSync(file, JSON.stringify(doc, null, 2) + '\n');
+  const n = diffs.reduce((a, d) => a + d.slides.length, 0);
+  console.log(`[baseline] wrote ${n} slide threshold(s) for '${deckId}' to ${file}`);
 }
 
 async function main(): Promise<void> {

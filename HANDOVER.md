@@ -14,13 +14,44 @@ deck-by-deck. Full plan: `PLAN.md`.
 
 ## Current status
 
-- **Phases 0–3 DONE. Full pipeline works end-to-end** (old render → new render → diff → report). Ready for Phase 4 (the CSS/TS fix loop).
+- **Phases 0–3 DONE. Phase 4 first pass DONE** on the sample notebook — the new
+  fork now looks *close* to classic RISE on all 19 slides (title, bullet lists,
+  bold-emphasis lists, image slide, subslide sequences). Ready to broaden.
 - **Env — old (Notebook6+RISE):** BUILT at `envs/.venv-old`. `scripts/setup-old-env.ps1`.
 - **Env — new (JupyterLab+fork):** BUILT at `envs/.venv-new`, fork dev-installed + labextension symlinked + server ext enabled. `scripts/setup-fork.ps1`.
 - **Goldens captured:** deck `machine-learning-azav-de`, sample notebook (19 slides). New-stack shots also captured (19 — counts match).
-- **First report:** `reports/machine-learning-azav-de/index.html` (mean mismatch 2.53% — but see metric caveat below).
-- **Baseline scores:** none yet (`config/baseline.json` empty; fill during Phase 4).
-- **Fork branch:** `main` @ 837bddc. No source edits yet.
+- **Report:** `reports/machine-learning-azav-de/index.html` (mean mismatch 2.17%, down from 2.53% — but see metric caveat; the visual match is much better than that number implies).
+- **Baseline scores:** RECORDED for the sample notebook in `config/baseline.json`
+  (per-slide accepted thresholds = current mismatch ×1.5 + 0.5pp). Regenerate with
+  `npx tsx src/cli.ts compare --deck <id> --writeBaseline true`.
+- **Fork branch:** `port/classic-look` @ e27216e (branched from `main` @ 837bddc).
+  base.css edits committed there; NOT yet pushed to github.com/hoelzl/rise.
+
+## Phase 4 — what was fixed (root cause found)
+
+Both stacks use the *same* reveal config (`width/height:'100%'`, `center:true`,
+`minScale:1.0`) → reveal scale is 1.0 in both, so the huge look difference was
+NOT reveal scaling; it was **pure CSS**: the fork renders markdown through
+JupyterLab's `jp-RenderedHTMLCommon`, which (a) resets font to an absolute 14px
+(classic's `rendered_html` sits at 35.84px = 160% of the 22.4px slides font),
+(b) gives small grey headings, (c) leaves images at natural size, and the fork's
+own `width:100% !important` on `.slides` ate reveal's `margin:0.1`. Fixes live in
+`rise/packages/application/style/base.css` (see the fork commit). Divergences
+#1 (heading size), #2 (weight/color), #3 (image overflow), #5 (blue bar = the
+JupyterLab `.jp-Collapser` active-cell indicator) are resolved.
+
+**Capture fix (harness):** the fork defaults to `transition:'linear'`, so the old
+capture screenshotted slides mid-animation (looked grey/offset/overflowing — a
+red herring that masked the CSS fixes). `capture.ts` now injects `transition:none`
++ waits 600ms after advancing. Old stack was already `transition:none`.
+
+**Residual minor diffs (acceptable "close"):** heading→list gap slightly tighter
+than classic; content sits a touch higher. Diminishing returns — left as-is.
+
+**Diagnostic tool:** `harness/src/probe-measure.ts` (`npx tsx src/probe-measure.ts old|new`)
+dumps computed font-size/color/width/ancestor-chain for the h1/h2 + image on the
+content slide — how the 14px-reset root cause was found. Avoid nested named
+functions inside `page.evaluate` (tsx/esbuild injects `__name` → ReferenceError).
 
 ## Diagnosed divergences (new fork vs old RISE) — Phase 4 targets
 
@@ -63,19 +94,24 @@ SSIM refinement later if ranking proves insufficient.
 
 ## Next step (do this next)
 
-Phase 4 — the fix loop. Iterate:
-1. Edit `rise/packages/application/style/base.css` targeting divergence #1/#2 (heading
-   size + weight/color) first — highest visual impact, lowest risk.
-2. `scripts/rebuild-fork.ps1` (rebuilds JS/CSS; dev-install picks it up).
-3. `scripts/render-new.ps1 -Deck machine-learning-azav-de` then
-   `scripts/compare.ps1 -Deck machine-learning-azav-de`; open the report.
-4. Compare new shot vs golden visually (Read the PNGs). Accept when close; record the
-   score in `config/baseline.json`.
-5. Move to next divergence (images-overflow, then centering, then the blue bar).
-Then broaden with `-All true` on the deck, then add decks (Phase 6).
+The sample notebook looks close. Broaden and lock in:
+1. **Widen coverage on deck #1:** `scripts/render-old.ps1 -Deck machine-learning-azav-de -All true`
+   (goldens for the whole `Completed` deck — proprietary, stays local), then
+   `scripts/render-new.ps1 -Deck ... -All true`, then
+   `scripts/compare.ps1 -Deck ... -All true`. Open the report, eyeball the new
+   worst slides for divergences the sample didn't exercise (code cells + saved
+   outputs, tables, math, multi-column HTML, deep fragment stacks). Fix in
+   base.css; rebuild (`scripts/rebuild-fork.ps1`); re-render; re-compare.
+2. Refresh baselines: `npx tsx src/cli.ts compare --deck <id> --all true --writeBaseline true`.
+3. **Phase 5 — acceptance tests:** add `tests/visual.spec.ts` asserting each new
+   render stays ≤ its `config/baseline.json` threshold; wire `scripts/test.ps1`.
+4. **Phase 6 — fan out:** add decks to `config/decks.json`, regrow goldens + tests.
 
 To SEE current state fast: open `reports/machine-learning-azav-de/index.html`, or Read
 `goldens/.../slide-XXX.png` beside `shots/.../slide-XXX.png`.
+
+NOTE: after editing base.css you MUST `scripts/rebuild-fork.ps1` before re-rendering,
+or the dev-installed labextension serves stale CSS.
 
 ## Commands cheat-sheet
 
@@ -96,6 +132,13 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
 - Phase 1: built old stack (Notebook 6.5.7 + RISE 5.7.1). Extra pins needed: `setuptools<81`, `lxml_html_clean`. RISK GATE cleared. Captured first goldens.
 - Phase 2: built new stack. Fork JS build needs the venv `Scripts` on PATH (lerna sub-scripts call bare `jlpm`). Editable install needs `hatchling hatch-nodejs-version hatch-jupyter-builder editables` + `HATCH_JUPYTER_BUILDER_SKIP_BUILD=1`. New fork does NOT expose `window.Reveal` → switched the walker to DOM+keyboard (works on both stacks). Captured new shots (19).
 - Phase 3: pixelmatch compare + worst-first HTML report + baseline.json scaffold. First diff generated; divergences catalogued above.
+- Phase 4 (pass 1): diagnosed root cause (jp-RenderedHTMLCommon 14px reset; reveal
+  configs identical so scaling was never the issue) via `probe-measure.ts`. Fixed
+  base.css (heading typography, image fit, dropped width:100%!important, hid
+  collapser). Fixed capture nondeterminism (transition:none + 600ms settle) — the
+  fork's `transition:'linear'` had been capturing mid-animation. Mean 2.53%→2.17%;
+  sample notebook now visually close on all 19 slides. Recorded baselines. Fork
+  commit `port/classic-look` @ e27216e (unpushed). Added `compare --writeBaseline`.
 
 ## How to resume in a fresh session
 

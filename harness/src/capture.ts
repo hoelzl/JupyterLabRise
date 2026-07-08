@@ -8,12 +8,20 @@ import { StackName, ServerHandle } from './servers.js';
 import { TOKEN, Viewport } from './config.js';
 
 // Chrome we hide on BOTH stacks so diffs focus on slide *content*, not reveal/RISE UI.
+// We also kill reveal's slide transitions: the new fork defaults to transition
+// 'linear', so screenshotting shortly after advancing would catch a slide
+// mid-animation (semi-transparent, offset). Forcing transitions off makes the
+// capture deterministic and matches the old stack (which runs transition:none).
 const HIDE_CHROME = `
   .reveal .controls, .reveal .progress, .reveal .slide-number,
   .reveal .playback, .reveal .speaker-notes,
   #help-b, #exit-b, .reveal .help-button, .reveal .exit-button,
   .rise-enter-fullscreen, .rise-help, .rise-exit { display: none !important; }
   * { caret-color: transparent !important; }
+  .reveal .slides, .reveal .slides section, .reveal .slides section * {
+    transition: none !important;
+    animation: none !important;
+  }
 `;
 
 function encodePath(relPath: string): string {
@@ -125,7 +133,9 @@ async function walk(page: Page, outDir: string): Promise<SlideShot[]> {
 
     // Advance to the next slide (fragments are all shown, so Space moves on).
     await page.keyboard.press('Space');
-    await page.waitForTimeout(220);
+    // Settle: cover the fork's auto_select_timeout (450ms) which re-selects a
+    // cell and can shift scroll/layout after the slide change.
+    await page.waitForTimeout(600);
     const after = await readState(page);
     // No movement and nothing new to reveal => we're at the end.
     if (after.h === before.h && after.v === before.v && after.hiddenFragments === 0) break;

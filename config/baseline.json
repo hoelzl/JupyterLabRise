@@ -1,5 +1,29 @@
 {
   "$comment": "Accepted per-slide mismatch thresholds, keyed by deck/notebook/slide. Populated as slides are fixed and signed off in Phase 4; the acceptance test suite (Phase 5) asserts new-stack renders stay at or below these. Empty until the fix loop begins.",
   "metric": "pixelmatch mismatch ratio (0=identical, 1=fully different). Note: dominated by white background, so use for RANKING worst slides, not as an absolute similarity score.",
-  "decks": {}
+  "decks": {
+    "machine-learning-azav-de": {
+      "Woche 01 Einführung, LLMs und Python-Setup/01 Präsenz - Kursübersicht": {
+        "0-0": 0.046,
+        "1-0": 0.1078,
+        "2-0": 0.0254,
+        "3-0": 0.0318,
+        "4-0": 0.0547,
+        "5-0": 0.0499,
+        "6-0": 0.0455,
+        "7-0": 0.0185,
+        "7-1": 0.0145,
+        "7-2": 0.0151,
+        "7-3": 0.0129,
+        "7-4": 0.0131,
+        "7-5": 0.0435,
+        "7-6": 0.0382,
+        "7-7": 0.0168,
+        "8-0": 0.0271,
+        "9-0": 0.0588,
+        "10-0": 0.0473,
+        "11-0": 0.0463
+      }
+    }
+  }
 }
