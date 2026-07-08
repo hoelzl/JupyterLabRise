@@ -109,7 +109,9 @@ function writeBaseline(deckId: string, diffs: NotebookDiff[]): void {
   const doc = JSON.parse(readFileSync(file, 'utf8')) as {
     decks: Record<string, Record<string, Record<string, number>>>;
   };
-  const deckEntry: Record<string, Record<string, number>> = {};
+  // Merge into any existing deck entry so per-notebook runs accumulate rather
+  // than clobber each other.
+  const deckEntry = doc.decks[deckId] ?? {};
   for (const nb of diffs) {
     const slideEntry: Record<string, number> = {};
     for (const s of nb.slides) {

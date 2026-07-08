@@ -43,7 +43,7 @@ try {
       ['rendered', scope.querySelector('.jp-RenderedHTMLCommon, .rendered_html')],
       ['h1', scope.querySelector('h1')],
       ['img', scope.querySelector('img')],
-      ['codeLine', scope.querySelector('.CodeMirror-line, .cm-line, .jp-InputArea-editor .cm-content, .input_area pre')],
+      ['codeLine', scope.querySelector('.CodeMirror-code .CodeMirror-line, .cm-line, .highlight pre, .input_area .CodeMirror-code pre')],
       ['inputArea', scope.querySelector('.jp-InputArea-editor, .input_area, .CodeMirror')],
       ['prompt', scope.querySelector('.jp-InputPrompt, .input_prompt, .prompt')]
     ];

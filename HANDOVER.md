@@ -24,13 +24,15 @@ deck-by-deck. Full plan: `PLAN.md`.
 - **Baseline scores:** RECORDED for the sample notebook in `config/baseline.json`
   (per-slide accepted thresholds = current mismatch ×1.5 + 0.5pp). Regenerate with
   `npx tsx src/cli.ts compare --deck <id> --writeBaseline true`.
-- **Fork branch:** `port/classic-look` @ 55ebc9b (branched from `main` @ 837bddc).
-  base.css edits committed there; NOT yet pushed to github.com/hoelzl/rise.
-  Commits: e27216e (markdown/heading/image/blue-bar), 55ebc9b (code-cell sizing).
-- **Coverage so far:** sample markdown notebook (19 slides) + a code-heavy notebook
-  (`Z02 .../06 Matrix-Multiplikation`, 51 slides) — markdown, headings, images,
-  bullet/bold lists, tables, code cells all now look close. Code cells lack saved
-  outputs deck-wide (code-along style), so output rendering is still UNTESTED.
+- **Fork branch:** `port/classic-look` @ b8f78fa (branched from `main` @ 837bddc).
+  base.css edits committed there; NOT yet pushed to github.com/hoelzl/rise (user
+  chose to keep everything local for now). Commits: e27216e (markdown/heading/
+  image/blue-bar), 55ebc9b (code-cell sizing), b8f78fa (code size 22.4px fix).
+- **Coverage so far (3 notebooks, baselines recorded):** sample markdown (19
+  slides), code-heavy `Z02 .../06 Matrix-Multiplikation` (51), math/long-code
+  `Woche 09 .../01 Hybride Suche` (11). Markdown, headings, images, bullet/bold
+  lists, tables, code cells all look close. Code cells lack saved outputs
+  deck-wide (code-along style), so rendered OUTPUT styling is still UNTESTED.
 
 ## Phase 4 — what was fixed (root cause found)
 
@@ -151,9 +153,12 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
   commit `port/classic-look` @ e27216e (unpushed). Added `compare --writeBaseline`.
 - Phase 4 (pass 2): tested a code-heavy notebook (Matrix-Multiplikation, 51 slides).
   Found code cells rendered tiny (CM6 pins 13px) — same absolute-reset as markdown.
-  Fixed code/prompt/output font to classic 32.256px + widened prompt gutter. Code
-  cells now match. Fork commit 55ebc9b (unpushed). probe-measure.ts gained
-  `[stack] [steps] [nbRel]` args + code/prompt selectors.
+  Fixed code/prompt/output font + widened prompt gutter. Fork commit 55ebc9b.
+  probe-measure.ts gained `[stack] [steps] [nbRel]` args + code/prompt selectors.
+- Phase 4 (pass 3): a long-code slide (Woche 09 Hybride Suche) exposed that 32.256px
+  was too big (clipped long lines vs classic) — the reading came from a hidden
+  CodeMirror sizing helper. Corrected code to the true classic 22.4px (slides base).
+  Fork commit b8f78fa. writeBaseline now MERGES; baselines recorded for all 3 nbs.
 
 ## How to resume in a fresh session
 
