@@ -24,8 +24,13 @@ deck-by-deck. Full plan: `PLAN.md`.
 - **Baseline scores:** RECORDED for the sample notebook in `config/baseline.json`
   (per-slide accepted thresholds = current mismatch ×1.5 + 0.5pp). Regenerate with
   `npx tsx src/cli.ts compare --deck <id> --writeBaseline true`.
-- **Fork branch:** `port/classic-look` @ e27216e (branched from `main` @ 837bddc).
+- **Fork branch:** `port/classic-look` @ 55ebc9b (branched from `main` @ 837bddc).
   base.css edits committed there; NOT yet pushed to github.com/hoelzl/rise.
+  Commits: e27216e (markdown/heading/image/blue-bar), 55ebc9b (code-cell sizing).
+- **Coverage so far:** sample markdown notebook (19 slides) + a code-heavy notebook
+  (`Z02 .../06 Matrix-Multiplikation`, 51 slides) — markdown, headings, images,
+  bullet/bold lists, tables, code cells all now look close. Code cells lack saved
+  outputs deck-wide (code-along style), so output rendering is still UNTESTED.
 
 ## Phase 4 — what was fixed (root cause found)
 
@@ -90,6 +95,11 @@ SSIM refinement later if ranking proves insufficient.
 - Deck #1: `.../machine-learning-azav-de/Folien/Notebooks/Completed` (has saved outputs). `Code-Along` sibling lacks outputs — defer.
 - Fork is a lerna monorepo: **`packages/application`** = reveal.js/RISE app; **`packages/application/style/base.css`** (459 lines) is the core look. **`packages/lab`** = JupyterLab plugin. `ui-tests/` uses Galata/Playwright.
 - Tooling: Python 3.11, Node v25/npm 11, `uv` 0.11, `gh`, git. No Jupyter on default PATH → project-local venvs.
+- **yarn.lock gotcha:** the venv's `jlpm` (Yarn) is older than the fork's committed
+  lockfile format, so building rewrites `rise/yarn.lock` (v8→v6). Do NOT commit that
+  churn — `git checkout -- yarn.lock` in `rise/` before committing base.css. If a
+  rebuild then fails with `fsevents ... not present in your lockfile`, run
+  `jlpm install` in `rise/` once to reconcile node_modules↔lockfile, then rebuild.
 - Windows/PowerShell host. Bash tool available for POSIX. Deck paths contain spaces + German chars — quote carefully.
 
 ## Next step (do this next)
@@ -139,6 +149,11 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
   fork's `transition:'linear'` had been capturing mid-animation. Mean 2.53%→2.17%;
   sample notebook now visually close on all 19 slides. Recorded baselines. Fork
   commit `port/classic-look` @ e27216e (unpushed). Added `compare --writeBaseline`.
+- Phase 4 (pass 2): tested a code-heavy notebook (Matrix-Multiplikation, 51 slides).
+  Found code cells rendered tiny (CM6 pins 13px) — same absolute-reset as markdown.
+  Fixed code/prompt/output font to classic 32.256px + widened prompt gutter. Code
+  cells now match. Fork commit 55ebc9b (unpushed). probe-measure.ts gained
+  `[stack] [steps] [nbRel]` args + code/prompt selectors.
 
 ## How to resume in a fresh session
 

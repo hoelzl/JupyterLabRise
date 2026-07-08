@@ -5,7 +5,9 @@ import { startServer } from './servers.js';
 import { getDeck, TOKEN } from './config.js';
 
 const deck = getDeck('machine-learning-azav-de');
-const rel = deck.sample![0];
+// Optional: probe a specific notebook + advance N slides. argv: [stack] [steps] [nbRel]
+const steps = process.argv[3] ? parseInt(process.argv[3], 10) : 1;
+const rel = process.argv[4] ?? deck.sample![0];
 const enc = rel.split(/[\\/]/).map(encodeURIComponent).join('/');
 
 const stack = (process.argv[2] as 'old' | 'new') ?? 'new';
@@ -23,9 +25,11 @@ try {
   }
   await page.waitForSelector('.reveal .slides section', { timeout: 60000 });
   await page.waitForTimeout(4000);
-  // advance to slide h=1 (the "Willkommen!" content slide)
-  await page.keyboard.press('Space');
-  await page.waitForTimeout(1500);
+  for (let i = 0; i < steps; i++) {
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(700);
+  }
+  await page.waitForTimeout(800);
 
   const data = await page.evaluate(() => {
     const present = document.querySelector('.reveal .slides section.present') as HTMLElement | null;
@@ -38,7 +42,10 @@ try {
       ['mdcell', scope.querySelector('.jp-MarkdownCell, .text_cell')],
       ['rendered', scope.querySelector('.jp-RenderedHTMLCommon, .rendered_html')],
       ['h1', scope.querySelector('h1')],
-      ['img', scope.querySelector('img')]
+      ['img', scope.querySelector('img')],
+      ['codeLine', scope.querySelector('.CodeMirror-line, .cm-line, .jp-InputArea-editor .cm-content, .input_area pre')],
+      ['inputArea', scope.querySelector('.jp-InputArea-editor, .input_area, .CodeMirror')],
+      ['prompt', scope.querySelector('.jp-InputPrompt, .input_prompt, .prompt')]
     ];
     const out: Record<string, unknown> = {
       viewport: { w: window.innerWidth, h: window.innerHeight }
