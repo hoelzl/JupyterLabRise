@@ -16,9 +16,15 @@ deck-by-deck. Full plan: `PLAN.md`.
 
 - **Phases 0–6 DONE.** The fork looks *close* to classic RISE across every content
   type we've tested, and a regression suite locks it in. The core porting work is
-  essentially complete and **pushed** to `github.com/hoelzl/rise`. What remains is
-  optional polish + one real fork bug to investigate (see **Next Steps &
-  Recommendations**).
+  essentially complete and **pushed** to `github.com/hoelzl/rise`.
+- **The `RangeError` (divergence #6) is now root-caused** — it is benign FAST
+  design-token theming noise at slideshow init, NOT the slide-graph recursion once
+  feared (see the dedicated "RangeError" section). No fork change was needed/made.
+- **DOGFOODED (2026-07-08)** — presented a real deck live at 3840×2160 and fixed
+  three live-only issues the static harness couldn't catch (portrait-first flip,
+  black full-screen margins, stray grey scrollbar). All fixed, verified live, and
+  acceptance stays 159/159. See the **"Live dogfood fixes"** section. These are the
+  first fork changes beyond the CSS look-port (one touches `rise.ts`).
 - **Acceptance suite:** `scripts/test.ps1` (→ `harness/src/acceptance.ts`) re-renders
   every baselined notebook under the new fork and asserts each slide stays ≤ its
   `config/baseline.json` threshold (+0.01 eps). Currently **159/159 pass** (deck-1
@@ -106,10 +112,14 @@ one still open** and is the top recommended next-session item.
 4. ~~Content not vertically centered/scaled.~~ FIXED enough ("close"); minor
    residual centering on very tall slides.
 5. ~~Stray blue vertical bar on the left edge.~~ FIXED (hid `.jp-Collapser`).
-6. **OPEN — `RangeError: Maximum call stack size exceeded`** repeated in the console
-   on the new `/rise/` page. Never root-caused. A real fork bug (not cosmetic);
-   the leading suspect behind the (now-worked-around) tall-slide capture flake, and
-   could surface during live presentations. **See Next Steps recommendation.**
+6. **ROOT-CAUSED 2026-07-08 (was OPEN) — `RangeError: Maximum call stack size
+   exceeded`.** NOT a slide-graph recursion (the old suspicion) and NOT caused by
+   our CSS. It comes from **JupyterLab's FAST design-token theming**
+   (`@jupyter/web-components` + `@microsoft/fast-foundation`): the derived
+   colour-palette recipes recurse (`DesignTokenNode.get → getValueFor → evaluate →
+   getValueFor …`; downstream `PaletteRGB.from`/`ColorScale.sort`/`binarySearch`).
+   **Severity is far lower than feared** — see the dedicated section below. Left
+   as-is (no safe cheap fix); details + a candidate structural fix are recorded.
 
 ## Capture flake on tall slides (FIXED 2026-07-08)
 
@@ -126,6 +136,128 @@ Note: `voiceover` is a non-standard slide_type; both stacks treat it as a
 continuation of the current subslide, so voiceover cells render as inline yellow
 HTML boxes appended to the preceding slide — matching between stacks, no CSS
 needed.
+
+## Live dogfood fixes (2026-07-08)
+
+Presented deck #1 live from the fork at **3840×2160** (via `packages/lab`'s "Render
+as Reveal Slideshow" / Alt+R, which opens the standalone `/rise/` app — the same
+`packages/application` render the harness uses). Three live-only issues surfaced;
+all fixed, all verified live, acceptance still **159/159**.
+
+1. **Portrait-first flip.** On entering the slideshow the first slide came up in a
+   narrow portrait layout and only snapped to landscape on the first slide change.
+   Cause: reveal.js computes its layout while the notebook panel is still growing
+   to fill the shell (narrow → portrait aspect); the first `slidechanged`
+   internally re-layouts and fixes it. Fix (`packages/application/src/plugins/rise.ts`,
+   the reveal `ready` handler): force a re-layout once the container settles
+   (`requestAnimationFrame` + a 250ms `setTimeout` calling `Reveal.layout()`) and
+   on container resize (a `ResizeObserver` on `panel.node`).
+
+2. **Black margins in full screen.** RISE's `margin: 0.1` leaves side margins around
+   the slide (this geometry is IDENTICAL in classic RISE — measured — so it is NOT
+   a regression). But in the fork those margins were **black** vs classic's white.
+   Cause: RISE full-screen calls `requestFullscreen()` on the `.reveal` element, and
+   reveal.js 4 paints the deck background on `.reveal-viewport` (the body), not on
+   `.reveal` — so the full-screened `.reveal` is transparent and the browser paints
+   a black `::backdrop` that shows through the margins. Windowed, the white body
+   behind it showed → white; only full screen was black. Fix (`base.css`): paint
+   `.reveal` + `.reveal::backdrop` with `var(--r-background-color, #fff)`. No-op
+   windowed; theme-correct.
+
+3. **Stray grey vertical scrollbar** over the slide that drifted right on each slide
+   change and never disappeared. Cause: JupyterLab's `.jp-WindowedPanel-outer`
+   (overflow:auto) scroll container — kept even with `windowingMode:'none'` — has
+   content a hair taller than the viewport, so it paints a scrollbar; that scrollbar
+   also stole layout width, feeding the #1 `ResizeObserver` → `Reveal.layout()` loop
+   (→ the drift). Fix (`base.css`): hide the scrollbar (`scrollbar-width:none` +
+   `::-webkit-scrollbar{display:none}`) WITHOUT disabling scroll. NOTE: do **not**
+   use `overflow:hidden` here — it clips the tall voiceover slides (caught as 12
+   acceptance failures on `06 Copilot Kontext geben`); tall slides must still scroll.
+
+Not a bug (also confirmed live): the "Ihre Reise / Phase 1/2/3" slides advance as
+separate slides because cells 8/9 are authored `slide_type: subslide` (not
+`fragment`) — an authoring choice, rendered correctly (matches classic).
+
+**Dogfood gotcha — browser cache.** The `/rise/` app bundles have fixed names
+(`*.bundle.js`, no content hash) yet are served `Cache-Control: public,
+max-age=31536000, immutable`. After a `rebuild-fork` a plain reload (even reopening
+the tab) keeps serving the year-cached bundle. Use Chrome **"Empty Cache and Hard
+Reload"** (F12 → right-click reload) to pick up a rebuild. (Headless Playwright uses
+a fresh browser each run, so probes always see the new build — that mismatch cost
+time to spot.)
+
+**Dogfood how-to (for the next session).** Launch the fork live rooted at a deck:
+```
+JUPYTER_CONFIG_DIR=<repo>/envs/new/jupyter-config \
+  <repo>/envs/.venv-new/Scripts/python.exe -m jupyterlab --no-browser \
+  --port=8890 --ip=127.0.0.1 --ServerApp.token=risetoken \
+  --ServerApp.root_dir="<deck path>" --ServerApp.open_browser=False
+```
+Open `http://127.0.0.1:8890/lab?token=risetoken`, open a notebook, Alt+R. Course
+deps (pandas/matplotlib) live in the **course root `.venv`**, NOT `.venv-new`; it is
+registered as the **"Python (Courses)"** kernel (`jupyter kernelspec remove
+pythoncourses` to undo) — pick it for live cell execution of dep-heavy notebooks.
+Layout/live diagnostics: `harness/src/probe-layout.ts` (reveal geometry at any
+viewport + initial-vs-post-nav), `probe-layout-old.ts` (classic target),
+`probe-greybar.ts` (scrollbar/overflow suspects via the portrait→resize path),
+`probe-bg.ts` (per-layer background colours).
+
+## RangeError (divergence #6) — ROOT-CAUSED 2026-07-08
+
+**What it is:** `RangeError: Maximum call stack size exceeded`, logged (caught, not
+thrown-through) by JupyterLab's FAST web-component theming. Two stack shapes, both
+inside the dependency `@jupyter/web-components` / `@microsoft/fast-foundation` /
+`@microsoft/fast-element` — NOT in any RISE/reveal or harness code:
+1. `Store.get → DesignTokenNode.get → DesignTokenImpl.getValueFor → (web-components)
+   Object.evaluate → BindingObserver → DesignTokenBindingObserver.handleChange → …`
+   (a **design-token derivation cycle** — a node's `get()` walks its ancestry and
+   never terminates).
+2. `PaletteRGBImpl.from → ComponentStateColorPalette → ColorPalette → ColorScale.
+   sortColorScaleStops → Array.sort` and `colorContrast → binarySearch` self-
+   recursing — downstream symptoms of (1) (the palette recipe re-entered mid-derive).
+
+**Severity — much lower than the old handover implied. It is essentially benign
+console noise:**
+- Fires **only at slideshow entry/init** (~36–63×, count is nondeterministic).
+  **Zero** additional errors when advancing slides or resizing the window (measured).
+  So the fear that it "could bite during live presentations on big decks" is
+  unfounded — it is a one-time load-time burst, independent of slide count.
+- **Zero effect on rendered slides** — the acceptance suite is 159/159 and every
+  content type looks close to classic. FAST catches the error and logs it.
+- It is **fork/embedding-specific, not upstream**: a **plain** `/lab/tree/<nb>`
+  notebook in the SAME env has **65 `jp-button`s and 0 RangeErrors**. So JupyterLab's
+  FAST theming resolves fine normally; something about RISE's embedding triggers it.
+
+**The trigger (structural):** in a plain Lab page `body` itself carries class
+`jp-ThemedContainer` → a **single, stable FAST design-token root**; nested themed
+containers (completer, command palette, toolbar popup) inherit from it. In the RISE
+`/rise/` app `body` is `rise-enabled theme-simple` (NOT a themed container), so each
+nested `.jp-ThemedContainer` — including the one holding the notebook — becomes its
+**own independent design-token root** (3 roots vs 1). With no single parent root, the
+derived-palette token recipes cycle. (Confirmed via `probe-roots.ts`.)
+
+**Dead end tried (don't repeat):** the errors are NOT driven by the hidden notebook
+toolbar's FAST consumers. The fork already `notebookPanel.toolbar.hide()`s it
+(`packages/application/src/plugins/rise.ts` ~line 171, with a commented-out
+`dispose()` that "fail[s] due to the dynamic load of the toolbar items"). Detaching
+the toolbar node in `revealMode` removed all 12 `jp-button`s but the error count went
+**UP** (36→63) — proving the cause is the design-token **node tree**, not the
+consuming elements. Reverted; fork is unchanged (still @ 08d3a2e).
+
+**Candidate real fix (unverified, medium effort, touches init — the user's call):**
+give the RISE app a **single stable design-token root** matching plain Lab — e.g.
+add `jp-ThemedContainer` to `document.body` (and ensure the JupyterLab theme
+change-listener registers it as the FAST root) so the nested containers inherit
+instead of each rooting independently. This is deep in FAST/`@jupyter/web-components`
+behaviour and unverified; given the near-zero impact, **recommendation: leave it**
+unless it actually manifests as a visible/perf problem when presenting live.
+
+**Diagnostics added (`harness/src/`, run with `npx tsx src/<file> [deckId] [nbRel]`;
+not wired into the CLI, kept for reference like `probe-measure`/`probe-spacing`):**
+`probe-rangeerror.ts` (captures the full Error.stack out of the console args),
+`probe-fast.ts` (error count by phase init/advance/resize + FAST-element + CSS-var
+audit), `probe-plain.ts` (the plain-notebook control → 0 errors), `probe-roots.ts`
+(the design-token-root plain-vs-RISE structural comparison — the smoking gun).
 
 ## Metric caveat (IMPORTANT)
 
@@ -183,14 +315,15 @@ candidate next step with an explicit recommendation, roughly highest-value first
    harness can't. Low effort, high signal. If it feels right, that's your cue to
    open the PR (#6 below).
 
-2. **Investigate the `RangeError: Maximum call stack size exceeded`. → DO, if #1
-   surfaces anything OR you want the fork solid.** This is the only known *real
-   bug* (divergence #6), never root-caused. It's the leading suspect behind the
-   tall-slide capture flake (which we worked around, not fixed) and could bite
-   during live presentations on big decks. Approach: open a large deck in the fork,
-   reproduce in the browser console, read the stack trace, find the recursion
-   (suspect: slide-graph building in `packages/application` or a reveal plugin/init
-   loop). Medium effort, medium-high value. **Recommended.**
+2. **~~Investigate the `RangeError`.~~ DONE 2026-07-08 — root-caused; see the
+   "RangeError (divergence #6)" section above.** Bottom line: it's benign FAST
+   design-token theming noise at slideshow init (not slide-graph, not our CSS,
+   fork-specific, zero effect on rendering, does not recur during navigation).
+   **Recommendation: LEAVE IT** unless it visibly manifests live. A candidate
+   structural fix (single `body.jp-ThemedContainer` design-token root, matching
+   plain Lab) is documented but unverified and not worth the init-code risk given
+   the near-zero impact. Only revisit if a live presentation shows lag/glitches
+   traceable to it.
 
 3. **Execute a few more varied-output notebooks. → DO a small pass, MEDIUM value.**
    We covered matplotlib PNG plots + pandas DataFrame tables. Untested output
@@ -309,6 +442,28 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
   --ExecutePreprocessor.kernel_name=python3 "<nb>"` (the inline backend is REQUIRED
   for PNG capture; do NOT set MPLBACKEND=Agg).
 
+- Post-Phase-6 (RangeError investigation, 2026-07-08): root-caused divergence #6.
+  Built `probe-rangeerror/probe-fast/probe-plain/probe-roots.ts` to reproduce and
+  bisect. Findings: the error is FAST/`@jupyter/web-components` design-token
+  derivation recursion, fires only at slideshow init (0 on navigation/resize),
+  0 effect on rendering (159/159 still green), and is fork-specific (plain
+  `/lab/tree/` notebook = 0 errors). Structural trigger: RISE's `body` is not a
+  `jp-ThemedContainer` so the notebook's themed container becomes an independent
+  design-token root (3 roots vs plain Lab's 1). Tried & reverted a
+  toolbar-node-detach fix (error count rose 36→63 → cause is the token node tree,
+  not consumers). No fork change kept (still @ 08d3a2e; yarn.lock churn reverted).
+  Recommendation recorded: leave it unless it manifests live.
+
+- Live dogfood (2026-07-08): presented deck #1 from the fork at 3840×2160 and fixed
+  3 live-only issues — portrait-first flip (`rise.ts` re-layout on settle/resize),
+  black full-screen margins (`base.css` `.reveal`/`::backdrop` background), stray
+  grey scrollbar (`base.css` hide `.jp-WindowedPanel-outer` scrollbar). One aborted
+  attempt: `overflow:hidden` on the scroll container clipped tall voiceover slides
+  (12 acceptance fails) → switched to hiding just the scrollbar. Added live
+  diagnostics `probe-layout{,-old}.ts`, `probe-greybar.ts`, `probe-bg.ts`.
+  Acceptance 159/159 throughout. See "Live dogfood fixes". Fork changes committed
+  (see fork branch line in Current status).
+
 ## How to resume in a fresh session
 
 1. Read this file (esp. **Current status** + **Next Steps & Recommendations**) and `PLAN.md`.
@@ -326,5 +481,8 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
 - `harness/src/cli.ts` — `capture`/`compare`/`loop` + `--writeBaseline`.
 - `harness/src/probe-measure.ts`, `probe-spacing.ts` — computed-style / vertical-rhythm
   diagnostics (how root causes were found; not wired into CLI).
+- `harness/src/probe-rangeerror.ts`, `probe-fast.ts`, `probe-plain.ts`,
+  `probe-roots.ts` — FAST design-token RangeError diagnostics (divergence #6; not
+  wired into CLI). See the "RangeError" section.
 - `config/decks.json` — deck registry; `config/baseline.json` — per-slide thresholds.
 - `goldens/` (old-RISE reference, gitignored/proprietary), `shots/`, `reports/` (regenerated).

@@ -19,6 +19,13 @@ test-results/
 playwright-report/
 harness/.cache/
 
+# Scratch / diagnostic screenshots (probe-layout*, probe-greybar output)
+scratch-layout/
+
+# Jupyter runtime-generated state (not the tracked base config)
+envs/*/jupyter-config/lab/
+envs/*/jupyter-config/serverconfig/
+
 # Misc
 *.log
 .DS_Store
