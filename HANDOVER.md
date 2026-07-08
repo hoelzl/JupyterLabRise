@@ -14,9 +14,14 @@ deck-by-deck. Full plan: `PLAN.md`.
 
 ## Current status
 
-- **Phases 0–3 DONE. Phase 4 first pass DONE** on the sample notebook — the new
-  fork now looks *close* to classic RISE on all 19 slides (title, bullet lists,
-  bold-emphasis lists, image slide, subslide sequences). Ready to broaden.
+- **Phases 0–5 DONE.** The fork looks *close* to classic RISE across the tested
+  content types, and a regression suite locks it in. Remaining: broaden coverage
+  (Phase 4 is never truly "done") and fan out to more decks (Phase 6).
+- **Acceptance suite (Phase 5):** `scripts/test.ps1` (→ `harness/src/acceptance.ts`)
+  re-renders every baselined notebook under the new fork and asserts each slide
+  stays ≤ its `config/baseline.json` threshold (+0.01 epsilon). Currently **81/81
+  pass**; verified it fails + exits 1 on a real regression. Notebooks without local
+  goldens are SKIPPED (goldens are proprietary/local-only).
 - **Env — old (Notebook6+RISE):** BUILT at `envs/.venv-old`. `scripts/setup-old-env.ps1`.
 - **Env — new (JupyterLab+fork):** BUILT at `envs/.venv-new`, fork dev-installed + labextension symlinked + server ext enabled. `scripts/setup-fork.ps1`.
 - **Goldens captured:** deck `machine-learning-azav-de`, sample notebook (19 slides). New-stack shots also captured (19 — counts match).
@@ -106,24 +111,27 @@ SSIM refinement later if ranking proves insufficient.
 
 ## Next step (do this next)
 
-The sample notebook looks close. Broaden and lock in:
+Core look + tests are in place. To broaden and fan out:
 1. **Widen coverage on deck #1:** `scripts/render-old.ps1 -Deck machine-learning-azav-de -All true`
    (goldens for the whole `Completed` deck — proprietary, stays local), then
-   `scripts/render-new.ps1 -Deck ... -All true`, then
-   `scripts/compare.ps1 -Deck ... -All true`. Open the report, eyeball the new
-   worst slides for divergences the sample didn't exercise (code cells + saved
-   outputs, tables, math, multi-column HTML, deep fragment stacks). Fix in
-   base.css; rebuild (`scripts/rebuild-fork.ps1`); re-render; re-compare.
-2. Refresh baselines: `npx tsx src/cli.ts compare --deck <id> --all true --writeBaseline true`.
-3. **Phase 5 — acceptance tests:** add `tests/visual.spec.ts` asserting each new
-   render stays ≤ its `config/baseline.json` threshold; wire `scripts/test.ps1`.
-4. **Phase 6 — fan out:** add decks to `config/decks.json`, regrow goldens + tests.
+   `-All true` on render-new + compare. Open the report, eyeball the worst slides
+   for divergences the 3 tested notebooks didn't exercise (multi-column HTML,
+   deep fragment stacks, wide tables, SVG/plot outputs if any). Fix in base.css;
+   `scripts/rebuild-fork.ps1`; re-render; re-compare. Then
+   `npx tsx src/cli.ts compare --deck <id> --all true --writeBaseline true` and
+   `scripts/test.ps1` to lock in.
+   NOTE: rendered code-cell OUTPUTS are still untested — this deck is code-along
+   (no saved outputs). Find/execute a deck with outputs, or add one, to cover them.
+2. **Phase 6 — fan out:** add decks to `config/decks.json`, regrow goldens + tests.
+3. **Optional:** push `port/classic-look` to github.com/hoelzl/rise + parent to the
+   public repo (user chose to hold this for now — ask before publishing).
 
 To SEE current state fast: open `reports/machine-learning-azav-de/index.html`, or Read
 `goldens/.../slide-XXX.png` beside `shots/.../slide-XXX.png`.
 
 NOTE: after editing base.css you MUST `scripts/rebuild-fork.ps1` before re-rendering,
-or the dev-installed labextension serves stale CSS.
+or the dev-installed labextension serves stale CSS. If rebuild errors on
+`fsevents ... not present in your lockfile`, run `jlpm install` in `rise/` once.
 
 ## Commands cheat-sheet
 
@@ -159,6 +167,9 @@ Servers use fixed token `risetoken`, ports 8899 (old) / 8898 (new).
   was too big (clipped long lines vs classic) — the reading came from a hidden
   CodeMirror sizing helper. Corrected code to the true classic 22.4px (slides base).
   Fork commit b8f78fa. writeBaseline now MERGES; baselines recorded for all 3 nbs.
+- Phase 5: acceptance suite `harness/src/acceptance.ts` + `scripts/test.ps1`. Re-renders
+  each baselined notebook, asserts slide mismatch ≤ baseline+eps, exits 1 on
+  regression, SKIPs notebooks lacking local goldens. 81/81 pass; fail path verified.
 
 ## How to resume in a fresh session
 
