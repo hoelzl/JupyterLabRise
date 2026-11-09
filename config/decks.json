@@ -4,7 +4,7 @@
   "decks": [
     {
       "id": "machine-learning-azav-de",
-      "path": "C:/Users/tc/Programming/Python/Courses/Own/PythonCourses/output/trainer/machine-learning-azav-de/Folien/Notebooks/Completed",
+      "path": "G:/Courses/PythonCourses/output/trainer/machine-learning-azav-de/Folien/Notebooks/Completed",
       "glob": "**/*.ipynb",
       "viewport": { "width": 1920, "height": 1080 },
       "sample": [
@@ -17,7 +17,7 @@
     },
     {
       "id": "evaluation",
-      "path": "C:/Users/tc/Programming/Python/Courses/Own/PythonCourses/output/evaluation",
+      "path": "G:/Courses/PythonCourses/output/evaluation",
       "glob": "**/*.ipynb",
       "viewport": { "width": 1920, "height": 1080 },
       "sample": [
@@ -30,7 +30,7 @@
     },
     {
       "id": "python-best-practice-de",
-      "path": "C:/Users/tc/Programming/Python/Courses/Own/PythonCourses/output/trainer/python-best-practice-de/Folien/Notebooks/Completed",
+      "path": "G:/Courses/PythonCourses/output/trainer/python-best-practice-de/Folien/Notebooks/Completed",
       "glob": "**/*.ipynb",
       "viewport": { "width": 1920, "height": 1080 },
       "sample": [
